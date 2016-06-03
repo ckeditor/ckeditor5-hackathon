@@ -36,8 +36,10 @@ function initEditor() {
 			'#': [
 				'ckeditor5',
 				'ckeditor5-chat',
+				'ckeditor5-code',
 				'dev',
-				'general'
+				'general',
+				'standup'
 			]
 		}
 	} )

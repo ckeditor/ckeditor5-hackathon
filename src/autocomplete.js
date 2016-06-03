@@ -8,7 +8,14 @@
 'use strict';
 
 import Feature from '../feature.js';
-// import Model from '../ui/model.js';
+import Collection from '/ckeditor5/utils/collection.js';
+import Model from '/ckeditor5/ui/model.js';
+
+import DropdownPanel from '/ckeditor5/ui/dropdown/dropdownpanel.js';
+import FloatingDropdownPanelView from './floatingdropdownpanelview.js';
+
+import List from '/ckeditor5/ui/list/list.js';
+import ListView from '/ckeditor5/ui/list/listview.js';
 
 /**
  * Autocomplete
@@ -16,26 +23,73 @@ import Feature from '../feature.js';
  * @extends ckeditor5.Feature
  */
 export default class Undo extends Feature {
+	/**
+	 * TODO
+	 */
 	init() {
-		// const t = editor.t;
+		const editor = this.editor;
 
-		this.editor.document.on( 'change', () => {
+		this.model = new Model( {
+			suggestions: new Collection( { idProperty: 'label' } )
+		} );
+
+		this._setupUi();
+
+		editor.document.on( 'change', () => {
 			this._check();
 		} );
 	}
 
+	/**
+	 * TODO
+	 */
+	_setupUi() {
+		const editor = this.editor;
+
+		const panelModel = new Model( {
+			isOn: true
+		} );
+
+		const listModel = new Model( {
+			items: this.model.suggestions
+		} );
+
+		// Show the panel when there are some suggestions.
+		this.listenTo( this.model.suggestions, 'add', () => {
+			panelModel.isOn = true;
+		} );
+
+		// Hide the panel when no suggestions.
+		this.listenTo( this.model.suggestions, 'remove', () => {
+			if ( !this.model.suggestions.length ) {
+				panelModel.isOn = false;
+			}
+		} );
+
+		const panelView = new FloatingDropdownPanelView( panelModel );
+		const panel = new DropdownPanel( panelModel, panelView );
+		const list = new List( listModel, new ListView( listModel ) );
+
+		panel.add( 'content', list );
+
+		editor.ui.collections.get( 'body' ).add( panel );
+	}
+
+	/**
+	 * TODO
+	 */
 	_check() {
 		const editor = this.editor;
 		const cfg = editor.config.get( 'autocomplete' );
 
-		// A sample @te^xt.
+		// A s#ample @te^xt.
 		const sel = editor.document.selection;
 
-		// "A sample @text."
+		// "A s#ample @text."
 		const text = sel.focus.parent.getText();
 		const selOffset = sel.focus.offset;
 
-		// "A sample @te"
+		// "A s#ample @te"
 		const textBefore = text.substr( 0, selOffset + 1 );
 
 		let lastTrigger = null;
@@ -45,13 +99,19 @@ export default class Undo extends Feature {
 			const index = textBefore.lastIndexOf( c );
 
 			if ( index > lastTriggerIndex ) {
+				// "A s#ample @te"
+				// -----------^
 				lastTriggerIndex = index;
+
+				// "@"
 				lastTrigger = c;
 			}
 		}
 
 		if ( !lastTrigger ) {
 			console.log( '[i] No trigger found.' );
+
+			this.model.suggestions.clear();
 
 			return;
 		}
@@ -62,13 +122,21 @@ export default class Undo extends Feature {
 		if ( currentText.match( /\s/g ) ) {
 			console.log( '[i] Whitespace between trigger and current position.' );
 
+			this.model.suggestions.clear();
+
 			return;
 		}
 
-		const suggestions = cfg[ lastTrigger ].filter( s => {
-			return s.indexOf( currentText ) === 0;
-		} ).sort();
+		this.model.suggestions.clear();
 
-		console.log( currentText, suggestions );
+		cfg[ lastTrigger ]
+			.filter( s => {
+				return s.indexOf( currentText ) === 0;
+			} )
+			.sort()
+			.forEach( s => {
+				// It's very, very memory-inefficient. But it's a PoC, so...
+				this.model.suggestions.add( new Model( { label: s } ) );
+			} );
 	}
 }
