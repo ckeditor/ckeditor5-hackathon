@@ -35,9 +35,7 @@ export default class Undo extends Feature {
 
 		this._setupUi();
 
-		editor.document.on( 'change', () => {
-			this._check();
-		} );
+		editor.document.on( 'changesDone', this._check, this );
 	}
 
 	/**
@@ -47,7 +45,7 @@ export default class Undo extends Feature {
 		const editor = this.editor;
 
 		const panelModel = new Model( {
-			isOn: true
+			isOn: false
 		} );
 
 		const listModel = new Model( {
@@ -70,6 +68,12 @@ export default class Undo extends Feature {
 		const panel = new DropdownPanel( panelModel, panelView );
 		const list = new List( listModel, new ListView( listModel ) );
 
+		this.listenTo( panelModel, 'change:isOn', () => {
+			if ( panelModel.isOn ) {
+				panelView.position();
+			}
+		} );
+
 		panel.add( 'content', list );
 
 		editor.ui.collections.get( 'body' ).add( panel );
@@ -90,7 +94,7 @@ export default class Undo extends Feature {
 		const selOffset = sel.focus.offset;
 
 		// "A s#ample @te"
-		const textBefore = text.substr( 0, selOffset + 1 );
+		const textBefore = text.substr( 0, selOffset );
 
 		let lastTrigger = null;
 		let lastTriggerIndex = 0;
@@ -116,8 +120,14 @@ export default class Undo extends Feature {
 			return;
 		}
 
-		// "te"
-		const currentText = text.slice( lastTriggerIndex + 1, selOffset + 1 );
+		// TODO: Different offset when backspace
+		const currentText =
+			// "te"
+			text.slice( lastTriggerIndex + 1, selOffset ) +
+			// "xt."
+			text.slice( selOffset ).split( /\s/g )[ 0 ];
+
+		// console.log( `"${textBefore}"`, `"${currentText}"` );
 
 		if ( currentText.match( /\s/g ) ) {
 			console.log( '[i] Whitespace between trigger and current position.' );
