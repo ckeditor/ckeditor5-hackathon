@@ -40,6 +40,7 @@ export default class SuggestionModeEngine extends Feature {
 
 		// Override default action of composer.deleteContents().
 		this.listenTo( doc.composer, 'deleteContents', ( evt, data ) => {
+			// Feature is off.
 			if ( !command.value ) {
 				return;
 			}
@@ -58,6 +59,7 @@ export default class SuggestionModeEngine extends Feature {
 
 		// Mark all inserted text.
 		this.listenTo( doc, 'change', ( evt, type, data, batch ) => {
+			// Feature is off.
 			if ( !command.value ) {
 				return;
 			}
@@ -68,24 +70,27 @@ export default class SuggestionModeEngine extends Feature {
 
 			const lastOperation = getLastOperation( batch );
 
+			// May be redundant after we checked the type above.
 			if ( !( lastOperation instanceof InsertOperation ) ) {
 				return;
 			}
 
-			for ( let value of data.range ) {
-				const range = new Range( value.previousPosition, value.nextPosition );
-				batch.setAttr( INSERTED, true, range );
+			// Do not mark text which was inserted inside a deleted text as inserted.
+			// This is how Google Docs work – typing within previously deleted text is still considered
+			// as removing this bit. Makes some sense.
+			if ( isInsertionWithinDeletion( data.range ) ) {
+				return;
 			}
+
+			doc.enqueueChanges( () => {
+				for ( let value of data.range ) {
+					const range = new Range( value.previousPosition, value.nextPosition );
+					batch.setAttr( INSERTED, true, range );
+					batch.removeAttr( DELETED, range );
+				}
+			} );
 		} );
 	}
-}
-
-function getLastOperation( batch ) {
-	return last( last( batch.deltas ).operations );
-}
-
-function last( array ) {
-	return array[ array.length - 1 ];
 }
 
 class SuggestionModeCommand extends Command {
@@ -98,4 +103,24 @@ class SuggestionModeCommand extends Command {
 	_doExecute() {
 		this.value = !this.value;
 	}
+}
+
+function getLastOperation( batch ) {
+	return last( last( batch.deltas ).operations );
+}
+
+function last( array ) {
+	return array[ array.length - 1 ];
+}
+
+function isInsertionWithinDeletion( changeRange ) {
+	const nodeBefore = changeRange.start.nodeBefore;
+	const nodeAfter = changeRange.end.nodeAfter;
+
+	// If insertion happened at some boundary, then it's not "within" deleted content.
+	if ( !nodeBefore || !nodeAfter ) {
+		return false;
+	}
+
+	return nodeBefore.hasAttribute( DELETED ) && nodeAfter.hasAttribute( DELETED );
 }
