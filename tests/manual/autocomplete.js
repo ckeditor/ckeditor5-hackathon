@@ -31,7 +31,7 @@ function initEditor() {
 				'@scofalik'
 			],
 
-			':': [ ':)', ':(', ':D', ':p', ':F' ],
+			':': [ ':-)', ':-(', ':D', ':p', ':F' ],
 
 			'#': [
 				'#ckeditor5',
