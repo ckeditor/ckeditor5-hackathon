@@ -132,7 +132,7 @@ export default class Autocomplete extends Feature {
 			return;
 		}
 
-		// TODO: Different offset when backspace
+		// "text"
 		const text =
 			// "te"
 			selText.slice( lastTriggerIndex, selOffset ) +
