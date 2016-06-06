@@ -48,11 +48,37 @@ export default class SuggestionModeEngine extends Feature {
 
 			const sel = data.selection;
 
+			// This is a bit tricky:
+			//
+			// 1. If deleting a non yet modified text, simply mark it.
+			// 2. If deleting a previously inserted text, then delete it as you would do normally.
+			//
+			// However, the selection may contain a bigger chunk of content with lots of inserted, deleted or whatever text.
+			// We shouldn't modify it node by node, but in bigger chunks. That's why we use filterNodes.
 			doc.enqueueChanges( () => {
-				doc.batch().setAttr( DELETED, true, sel.getFirstRange() );
+				const deletedRange = sel.getFirstRange();
 
-				const pos = sel.getFirstRange()[ data.options.direction == 'FORWARD' ? 'end' : 'start' ];
-				sel.setRanges( [ new Range( pos, pos ) ] );
+				sel.removeAllRanges();
+
+				// Case 1.
+				for ( let fragRange of filterNodes( deletedRange, isNotModified ) ) {
+					doc.batch().setAttr( DELETED, true, fragRange );
+				}
+
+				// Case 2.
+				let insertedRanges = Array.from( filterNodes( deletedRange, isInserted ) );
+				let fragRange;
+				let selectionPosition = deletedRange[ data.options.direction == 'FORWARD' ? 'end' : 'start' ];
+
+				while ( ( fragRange = insertedRanges.pop() ) ) {
+					// TODO Finding the expected selection position is more tricky than this.
+					// Case: "xx[xiix]xx" (i == inserted, x == existing). Now press backspace.
+					// Selection should end up at offset 2. It ends at offset 3.
+					selectionPosition = fragRange.start;
+					doc.batch().remove( fragRange );
+				}
+
+				sel.setRanges( [ new Range( selectionPosition, selectionPosition ) ] );
 			} );
 
 			evt.stop();
@@ -134,4 +160,35 @@ function isInsertionWithinDeletion( changeRange ) {
 	}
 
 	return nodeBefore.hasAttribute( DELETED ) && nodeAfter.hasAttribute( DELETED );
+}
+
+// Generates a collection of ranges which contain all nodes that satisfy the callback.
+function* filterNodes( range, callback ) {
+	let startPos;
+
+	for ( let value of range ) {
+		if ( !startPos && callback( value.item ) ) {
+			startPos = value.previousPosition;
+
+			continue;
+		}
+
+		if ( startPos && !callback( value.item ) ) {
+			yield new Range( startPos, value.previousPosition );
+
+			startPos = null;
+		}
+	}
+
+	if ( startPos ) {
+		yield new Range( startPos, range.end );
+	}
+}
+
+function isNotModified( item ) {
+	return !item.hasAttribute( DELETED ) && !item.hasAttribute( INSERTED );
+}
+
+function isInserted( item ) {
+	return item.hasAttribute( INSERTED );
 }
