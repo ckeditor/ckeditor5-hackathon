@@ -11,8 +11,8 @@ import Feature from '../feature.js';
 import Collection from '/ckeditor5/utils/collection.js';
 import Model from '/ckeditor5/ui/model.js';
 
-import DropdownPanel from '/ckeditor5/ui/dropdown/dropdownpanel.js';
-import FloatingDropdownPanelView from './floatingdropdownpanelview.js';
+import Panel from '/ckeditor5/ui/panel/panel.js';
+import FloatingPanelView from './floatingpanelview.js';
 
 import List from '/ckeditor5/ui/list/list.js';
 import ListView from '/ckeditor5/ui/list/listview.js';
@@ -43,27 +43,36 @@ export default class Autocomplete extends Feature {
 	 * TODO
 	 */
 	_setupUi() {
-		const editor = this.editor;
-		const suggestions = this.model.suggestions;
-
 		const panelModel = new Model( {
 			isOn: false
 		} );
 
 		const listModel = new Model( {
-			items: this.model.suggestions
+			items: this.model.suggestions,
+			current: null
 		} );
 
-		const panelView = new FloatingDropdownPanelView( panelModel );
-		const panel = new DropdownPanel( panelModel, panelView );
-		const list = new List( listModel, new ListView( listModel ) );
+		listModel.bind( 'isOn' ).to( panelModel );
+
+		this._setupPanel( panelModel, this._setupList( listModel ) );
+	}
+
+	/**
+	 * TODO
+	 */
+	_setupPanel( panelModel, list ) {
+		const editor = this.editor;
+		const suggestions = this.model.suggestions;
+		const panel = new Panel( panelModel, new FloatingPanelView( panelModel ) );
 
 		panel.add( 'content', list );
 		editor.ui.collections.get( 'body' ).add( panel );
 
 		// Show the panel when there are some suggestions.
 		this.listenTo( suggestions, 'add', () => {
-			panelModel.isOn = true;
+			if ( !panelModel.isOn ) {
+				panelModel.isOn = true;
+			}
 		} );
 
 		// Hide the panel when no suggestions.
@@ -72,14 +81,44 @@ export default class Autocomplete extends Feature {
 				panelModel.isOn = false;
 			}
 		} );
+	}
 
-		this.listenTo( panelModel, 'change:isOn', ( evt, name, value ) => {
-			if ( value ) {
-				panelView.position();
-			}
-		} );
+	/**
+	 * TODO
+	 */
+	_setupList( listModel ) {
+		const editor = this.editor;
+		const list = new List( listModel, new ListView( listModel ), editor );
+		const stopCodes = new Set( [ 40, 38, 13 ] );
 
 		this.listenTo( listModel, 'execute', this._insert, this );
+		this.listenTo( editor.editing.view, 'keydown', _onKeyDown, this, -100 );
+
+		function _onKeyDown( evt, domEvt ) {
+			if ( !listModel.isOn ) {
+				return;
+			}
+
+			const keyCode = domEvt.keyCode;
+
+			if ( keyCode == 40 ) {
+				list.selectNext();
+			} else if ( keyCode == 38 ) {
+				list.selectPrevious();
+			} else if ( keyCode == 13 ) {
+				listModel.fire( 'execute', list.current );
+			}
+
+			if ( stopCodes.has( keyCode ) ) {
+				// This is kinda weird because this is for keyup/down...
+				domEvt.preventDefault();
+
+				// ...and this one for enter. Why?
+				evt.stop();
+			}
+		}
+
+		return list;
 	}
 
 	/**
@@ -158,7 +197,8 @@ export default class Autocomplete extends Feature {
 
 				// It's very, very memory-inefficient. But it's a PoC, so...
 				this.model.suggestions.add( new Model( {
-					label: sugText
+					label: sugText,
+					selected: false
 				} ) );
 			} );
 	}
