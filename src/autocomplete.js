@@ -30,13 +30,18 @@ export default class Autocomplete extends Feature {
 		const editor = this.editor;
 
 		this.model = new Model( {
-			currentText: '',
+			text: '',
 			suggestions: new Collection( { idProperty: 'label' } )
 		} );
 
 		this._setupUi();
 
 		editor.document.on( 'changesDone', this._check, this );
+
+		// editor.keystrokes.set( 'arrowdown', () => {
+		// 	console.log( 'adown' );
+		// 	return true;
+		// } );
 	}
 
 	/**
@@ -86,6 +91,8 @@ export default class Autocomplete extends Feature {
 	 * TODO
 	 */
 	_check() {
+		console.log( '[i] Checking autocomplete' );
+
 		const editor = this.editor;
 		const cfg = editor.config.get( 'autocomplete' );
 
@@ -93,11 +100,11 @@ export default class Autocomplete extends Feature {
 		const sel = editor.document.selection;
 
 		// "A s#ample @text."
-		const text = sel.focus.parent.getText();
+		const selText = sel.focus.parent.getText();
 		const selOffset = sel.focus.offset;
 
 		// "A s#ample @te"
-		const textBefore = text.substr( 0, selOffset );
+		const preceding = selText.substr( 0, selOffset );
 
 		let lastTrigger = null;
 		let lastTriggerIndex = -1;
@@ -105,7 +112,7 @@ export default class Autocomplete extends Feature {
 		this.model.suggestions.clear();
 
 		for ( let c in cfg ) {
-			const index = textBefore.lastIndexOf( c );
+			const index = preceding.lastIndexOf( c );
 
 			if ( index > lastTriggerIndex ) {
 				// "A s#ample @te"
@@ -117,40 +124,42 @@ export default class Autocomplete extends Feature {
 			}
 		}
 
+		console.log( `	[i] Preceding: "${ preceding }"` );
+
 		if ( !lastTrigger ) {
-			console.log( '[i] No trigger found.' );
+			console.log( '	[i] No trigger found.' );
 
 			return;
 		}
 
 		// TODO: Different offset when backspace
-		const currentText =
+		const text =
 			// "te"
-			text.slice( lastTriggerIndex, selOffset ) +
+			selText.slice( lastTriggerIndex, selOffset ) +
 			// "xt."
-			text.slice( selOffset ).split( /\s/g )[ 0 ];
+			selText.slice( selOffset ).split( /\s/g )[ 0 ];
 
-		console.log( `[i] Current "${ currentText }", Before: "${ textBefore }"` );
+		console.log( `	[i] Text: "${ text }"` );
 
-		if ( currentText.match( /\s/g ) ) {
-			console.log( '[i] Whitespace between trigger and current position.' );
+		if ( text.match( /\s/g ) ) {
+			console.log( '	[i] Whitespace between trigger and current position.' );
 
 			return;
 		}
 
-		this.model.currentText = currentText;
+		this.model.text = text;
 
 		cfg[ lastTrigger ]
 			.filter( sugText => {
-				if ( currentText === lastTrigger ) {
+				if ( text === lastTrigger ) {
 					return sugText;
 				} else {
-					return sugText !== currentText && sugText.indexOf( currentText ) === 0;
+					return sugText !== text && sugText.indexOf( text ) === 0;
 				}
 			} )
 			.sort()
 			.forEach( sugText => {
-				console.log( `[i] Suggestion "${ sugText }" found.` );
+				console.log( `	[i] Suggestion "${ sugText }" found.` );
 
 				// It's very, very memory-inefficient. But it's a PoC, so...
 				this.model.suggestions.add( new Model( {
@@ -169,7 +178,7 @@ export default class Autocomplete extends Feature {
 		doc.enqueueChanges( () => {
 			doc.batch().insert(
 				doc.selection.focus,
-				itemModel.label.slice( this.model.currentText.length )
+				itemModel.label.slice( this.model.text.length )
 			);
 		} );
 	}
