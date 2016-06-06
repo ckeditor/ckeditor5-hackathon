@@ -6,13 +6,17 @@
 'use strict';
 
 import Feature from '../feature.js';
+import Command from '../command/command.js';
 
 import BuildModelConverterFor from '../engine/conversion/model-converter-builder.js';
-import DeleteObserver from '../delete/deleteobserver.js';
 
 import Range from '../engine/model/range.js';
 
-// import deleteContents from '../engine/model/composer/deletecontents.js';
+import InsertOperation from '../engine/model/operation/insertoperation.js';
+
+import ButtonController from '../ui/button/button.js';
+import ButtonView from '../ui/button/buttonview.js';
+import Model from '../ui/model.js';
 
 const INSERTED = 'inserted';
 const DELETED = 'deleted';
@@ -22,10 +26,29 @@ export default class SuggestionMode extends Feature {
 		const editor = this.editor;
 		const editing = editor.editing;
 		const doc = editor.document;
+		const t = editor.t;
+		const command = new SuggestionModeCommand( editor );
 
-		editing.view.addObserver( DeleteObserver );
+		editor.commands.set( 'suggestionMode', command );
 
-		// Allow bold attribute on all inline nodes.
+		// Create button model.
+		const buttonModel = new Model( {
+			isEnabled: true,
+			isOn: false,
+			label: t( 'Suggestion Mode' ),
+			iconAlign: 'LEFT'
+		} );
+
+		// Bind button model to command.
+		buttonModel.bind( 'isOn', 'isEnabled' ).to( command, 'value', 'isEnabled' );
+
+		// Execute command.
+		this.listenTo( buttonModel, 'execute', () => editor.execute( 'suggestionMode' ) );
+
+		// Add suggestionMode button to feature components.
+		editor.ui.featureComponents.add( 'suggestionMode', ButtonController, ButtonView, buttonModel );
+
+		// Allow delete and insert attribute on all inline nodes.
 		doc.schema.allow( { name: '$inline', attributes: [ INSERTED ] } );
 		doc.schema.allow( { name: '$inline', attributes: [ DELETED ] } );
 
@@ -39,6 +62,10 @@ export default class SuggestionMode extends Feature {
 
 		// Override default action of composer.deleteContents().
 		this.listenTo( doc.composer, 'deleteContents', ( evt, data ) => {
+			if ( !command.value ) {
+				return;
+			}
+
 			const sel = data.selection;
 
 			doc.enqueueChanges( () => {
@@ -50,5 +77,47 @@ export default class SuggestionMode extends Feature {
 
 			evt.stop();
 		}, null, 0 );
+
+		// Mark all inserted text.
+		this.listenTo( doc, 'change', ( evt, type, data, batch ) => {
+			if ( !command.value ) {
+				return;
+			}
+
+			if ( type != 'insert' ) {
+				return;
+			}
+
+			const lastOperation = getLastOperation( batch );
+
+			if ( !( lastOperation instanceof InsertOperation ) ) {
+				return;
+			}
+
+			for ( let value of data.range ) {
+				const range = new Range( value.previousPosition, value.nextPosition );
+				batch.setAttr( INSERTED, true, range );
+			}
+		} );
+	}
+}
+
+function getLastOperation( batch ) {
+	return last( last( batch.deltas ).operations );
+}
+
+function last( array ) {
+	return array[ array.length - 1 ];
+}
+
+class SuggestionModeCommand extends Command {
+	constructor( editor ) {
+		super( editor );
+
+		this.set( 'value', false );
+	}
+
+	_doExecute() {
+		this.value = !this.value;
 	}
 }

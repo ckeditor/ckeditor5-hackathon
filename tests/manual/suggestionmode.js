@@ -10,8 +10,25 @@
 import ClassicEditor from '/ckeditor5/creator-classic/classic.js';
 
 ClassicEditor.create( document.querySelector( '#editor' ), {
-	features: [ 'hackathon/suggestionmode', 'enter', 'paragraph', 'delete', 'formats', 'undo', 'basic-styles/bold', 'basic-styles/italic' ],
-	toolbar: [ 'formats', 'bold', 'italic', 'undo', 'redo' ]
+	features: [
+		'hackathon/suggestionmode',
+		'enter',
+		'paragraph',
+		'delete',
+		'typing',
+		'formats',
+		'undo',
+		'basic-styles/bold',
+		'basic-styles/italic'
+	],
+	toolbar: [
+		'formats',
+		'bold',
+		'italic',
+		'undo',
+		'redo',
+		'suggestionMode'
+	]
 } )
 .then( editor => {
 	window.editor = editor;
