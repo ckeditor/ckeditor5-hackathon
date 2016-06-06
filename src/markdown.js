@@ -16,7 +16,7 @@ import ViewContainerElement from '../engine/view/containerelement.js';
 import ViewMatcher from '../engine/view/matcher.js';
 import BuildViewConverterFor from '../engine/conversion/view-converter-builder.js';
 import BuildModelConverterFor from '../engine/conversion/model-converter-builder.js';
-let first = true;
+
 /**
  * A paragraph feature for editor.
  * Introduces `<paragraph>` element in the model which renders as `<p>` in the DOM and data.
@@ -31,28 +31,11 @@ export default class Markdown extends Feature {
 	init() {
 		const editor = this.editor;
 		const doc = editor.document;
-		const data = editor.data;
 		const editing = editor.editing;
 
-		editor.document.schema.allow( { name: '$inline', attributes: [ 'bold-md' ] } );
-		editor.document.schema.allow( { name: '$inline', attributes: [ 'italic-md' ] } );
+		this._buildConverters();
 
-		BuildModelConverterFor( data.modelToView, editing.modelToView )
-			.fromAttribute( 'bold-md' )
-			.toElement( 'strong' );
-
-		BuildViewConverterFor( data.viewToModel )
-			.fromElement( 'strong' )
-			.toAttribute( 'bold-md', true );
-
-		BuildModelConverterFor( data.modelToView, editing.modelToView )
-			.fromAttribute( 'italic-md' )
-			.toElement( 'em' );
-
-		BuildViewConverterFor( data.viewToModel )
-			.fromElement( 'em' )
-			.toAttribute( 'italic-md', true );
-
+		// Listen to model changes and add attributes.
 		editing.model.on( 'change', ( evt, type, data ) => {
 			console.log( 'model changed', type );
 
@@ -128,6 +111,31 @@ export default class Markdown extends Feature {
 				} );
 			}
 		}
+	}
+
+	_buildConverters() {
+		const schema = this.editor.document.schema;
+		const data = this.editor.data;
+		const editing = this.editor.editing;
+
+		schema.allow( { name: '$inline', attributes: [ 'bold-md' ] } );
+		schema.allow( { name: '$inline', attributes: [ 'italic-md' ] } );
+
+		BuildModelConverterFor( data.modelToView, editing.modelToView )
+			.fromAttribute( 'bold-md' )
+			.toElement( 'strong' );
+
+		BuildViewConverterFor( data.viewToModel )
+			.fromElement( 'strong' )
+			.toAttribute( 'bold-md', true );
+
+		BuildModelConverterFor( data.modelToView, editing.modelToView )
+			.fromAttribute( 'italic-md' )
+			.toElement( 'em' );
+
+		BuildViewConverterFor( data.viewToModel )
+			.fromElement( 'em' )
+			.toAttribute( 'italic-md', true );
 	}
 }
 
