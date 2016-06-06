@@ -6,10 +6,9 @@
 'use strict';
 
 import Feature from '../../feature.js';
+import Typing from '../../typing/typing.js';
 import EditingController from '../../engine/editingcontroller.js';
 import BuildModelConverterFor from '../../engine/conversion/model-converter-builder.js';
-
-import ViewContainerElement from '../../engine/view/containerelement.js';
 
 export default class TableOfContents extends Feature {
 	init() {
@@ -18,16 +17,15 @@ export default class TableOfContents extends Feature {
 		const tableOfContents = new EditingController( editor.document );
 		tableOfContents.createRoot( document.getElementById( 'table-of-contents' ) );
 
-		BuildModelConverterFor( tableOfContents.modelToView ).fromElement( 'paragraph' )
-		.toElement( new ViewContainerElement( 'p', { 'style': 'display:none' } ) );
+		BuildModelConverterFor( tableOfContents.modelToView ).fromElement( 'heading1' ).toElement( 'p.header1' );
+		BuildModelConverterFor( tableOfContents.modelToView ).fromElement( 'heading2' ).toElement( 'p.header2' );
+		BuildModelConverterFor( tableOfContents.modelToView ).fromElement( 'heading3' ).toElement( 'p.header3' );
 
-		BuildModelConverterFor( tableOfContents.modelToView ).fromElement( 'heading1' )
-		.toElement( new ViewContainerElement( 'p', { 'class': 'header1' } ) );
-
-		BuildModelConverterFor( tableOfContents.modelToView ).fromElement( 'heading2' )
-		.toElement( new ViewContainerElement( 'p', { 'class': 'header2' } ) );
-
-		BuildModelConverterFor( tableOfContents.modelToView ).fromElement( 'heading3' )
-		.toElement( new ViewContainerElement( 'p', { 'class': 'header3' } ) );
+		const typing = new Typing( {
+			editing: tableOfContents,
+			document: editor.document,
+			config: editor.config
+		} );
+		typing.init();
 	}
 }
