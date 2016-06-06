@@ -22,7 +22,7 @@ import ListView from '/ckeditor5/ui/list/listview.js';
  *
  * @extends ckeditor5.Feature
  */
-export default class Undo extends Feature {
+export default class Autocomplete extends Feature {
 	/**
 	 * TODO
 	 */
@@ -30,6 +30,7 @@ export default class Undo extends Feature {
 		const editor = this.editor;
 
 		this.model = new Model( {
+			currentText: '',
 			suggestions: new Collection( { idProperty: 'label' } )
 		} );
 
@@ -43,6 +44,7 @@ export default class Undo extends Feature {
 	 */
 	_setupUi() {
 		const editor = this.editor;
+		const suggestions = this.model.suggestions;
 
 		const panelModel = new Model( {
 			isOn: false
@@ -52,31 +54,32 @@ export default class Undo extends Feature {
 			items: this.model.suggestions
 		} );
 
+		const panelView = new FloatingDropdownPanelView( panelModel );
+		const panel = new DropdownPanel( panelModel, panelView );
+		const list = new List( listModel, new ListView( listModel ) );
+
+		panel.add( 'content', list );
+		editor.ui.collections.get( 'body' ).add( panel );
+
 		// Show the panel when there are some suggestions.
-		this.listenTo( this.model.suggestions, 'add', () => {
+		this.listenTo( suggestions, 'add', () => {
 			panelModel.isOn = true;
 		} );
 
 		// Hide the panel when no suggestions.
-		this.listenTo( this.model.suggestions, 'remove', () => {
+		this.listenTo( suggestions, 'remove', () => {
 			if ( !this.model.suggestions.length ) {
 				panelModel.isOn = false;
 			}
 		} );
 
-		const panelView = new FloatingDropdownPanelView( panelModel );
-		const panel = new DropdownPanel( panelModel, panelView );
-		const list = new List( listModel, new ListView( listModel ) );
-
-		this.listenTo( panelModel, 'change:isOn', () => {
-			if ( panelModel.isOn ) {
+		this.listenTo( panelModel, 'change:isOn', ( evt, name, value ) => {
+			if ( value ) {
 				panelView.position();
 			}
 		} );
 
-		panel.add( 'content', list );
-
-		editor.ui.collections.get( 'body' ).add( panel );
+		this.listenTo( listModel, 'execute', this._insert, this );
 	}
 
 	/**
@@ -99,6 +102,8 @@ export default class Undo extends Feature {
 		let lastTrigger = null;
 		let lastTriggerIndex = 0;
 
+		this.model.suggestions.clear();
+
 		for ( let c in cfg ) {
 			const index = textBefore.lastIndexOf( c );
 
@@ -115,38 +120,57 @@ export default class Undo extends Feature {
 		if ( !lastTrigger ) {
 			console.log( '[i] No trigger found.' );
 
-			this.model.suggestions.clear();
-
 			return;
 		}
 
 		// TODO: Different offset when backspace
 		const currentText =
 			// "te"
-			text.slice( lastTriggerIndex + 1, selOffset ) +
+			text.slice( lastTriggerIndex, selOffset ) +
 			// "xt."
 			text.slice( selOffset ).split( /\s/g )[ 0 ];
 
-		// console.log( `"${textBefore}"`, `"${currentText}"` );
+		console.log( `[ i] "${ textBefore }", "${ currentText }"` );
 
 		if ( currentText.match( /\s/g ) ) {
 			console.log( '[i] Whitespace between trigger and current position.' );
 
-			this.model.suggestions.clear();
-
 			return;
 		}
 
-		this.model.suggestions.clear();
+		this.model.currentText = currentText;
 
 		cfg[ lastTrigger ]
-			.filter( s => {
-				return s.indexOf( currentText ) === 0;
+			.filter( sugText => {
+				if ( currentText === lastTrigger ) {
+					return sugText;
+				} else {
+					return sugText !== currentText && sugText.indexOf( currentText ) === 0;
+				}
 			} )
 			.sort()
-			.forEach( s => {
+			.forEach( sugText => {
+				console.log( `[i] Suggestion "${ sugText }" found.` );
+
 				// It's very, very memory-inefficient. But it's a PoC, so...
-				this.model.suggestions.add( new Model( { label: s } ) );
+				this.model.suggestions.add( new Model( {
+					label: sugText
+				} ) );
 			} );
+	}
+
+	/**
+	 * TODO
+	 */
+	_insert( evt, itemModel ) {
+		const editor = this.editor;
+		const doc = editor.document;
+
+		doc.enqueueChanges( () => {
+			doc.batch().insert(
+				doc.selection.focus,
+				itemModel.label.slice( this.model.currentText.length )
+			);
+		} );
 	}
 }

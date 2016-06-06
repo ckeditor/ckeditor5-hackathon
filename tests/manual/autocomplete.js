@@ -21,25 +21,25 @@ function initEditor() {
 		toolbar: [ 'formats', 'bold', 'italic', 'undo', 'redo' ],
 		autocomplete: {
 			'@': [
-				'fredck',
-				'oleq',
-				'owrobel',
-				'reinmar',
-				'r.mikolajuk',
-				'pjasiun',
-				's.kups',
-				'scofalik'
+				'@fredck',
+				'@oleq',
+				'@owrobel',
+				'@reinmar',
+				'@r.mikolajuk',
+				'@pjasiun',
+				'@s.kups',
+				'@scofalik'
 			],
 
-			':': [ ':)', ':(', ':D', ':p', 'xD' ],
+			':': [ ':)', ':(', ':D', ':p', ':F' ],
 
 			'#': [
-				'ckeditor5',
-				'ckeditor5-chat',
-				'ckeditor5-code',
-				'dev',
-				'general',
-				'standup'
+				'#ckeditor5',
+				'#ckeditor5-chat',
+				'#ckeditor5-code',
+				'#dev',
+				'#general',
+				'#standup'
 			]
 		}
 	} )
