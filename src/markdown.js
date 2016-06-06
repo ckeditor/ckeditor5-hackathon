@@ -37,7 +37,7 @@ export default class Markdown extends Feature {
 
 		// Listen to model changes and add attributes.
 		editing.model.on( 'change', ( evt, type, data ) => {
-			console.log( 'model changed', type );
+			console.log( 'model changed', type, data );
 
 			if ( type === 'insert' ) {
 				const insertPosition = data.range.start;
@@ -45,11 +45,12 @@ export default class Markdown extends Feature {
 
 				removeAttributes( insertBlock );
 				applyAttributes( insertBlock );
+
+				const text = insertBlock.getText();
 			} else
 			if ( type === 'remove' ) {
 				const removePosition = data.sourcePosition;
 				const removeBlock = findTopmostBlock( removePosition );
-
 
 				if ( removeBlock !== null ) {
 					removeAttributes( removeBlock );
@@ -72,8 +73,9 @@ export default class Markdown extends Feature {
 		} );
 
 		function removeAttributes( block ) {
-			const range = Range.createFromElement( block );
 			doc.enqueueChanges( () => {
+				const range = Range.createFromElement( block );
+
 				if ( block.root.rootName !== '$graveyard' ) {
 					const batch = doc.batch();
 					batch.removeAttr( 'bold-md', range );
@@ -88,6 +90,7 @@ export default class Markdown extends Feature {
 
 			let result;
 
+			// Strong && emphasis.
 			while ( ( result = regexp.exec( text ) ) !== null ) {
 				let matched;
 				let attr;
@@ -111,6 +114,18 @@ export default class Markdown extends Feature {
 				} );
 			}
 		}
+
+		function rename( name, element ) {
+			doc.enqueueChanges( () => {
+				const ranges = [ ...doc.selection.getRanges() ];
+				const isSelectionBackward = doc.selection.isBackward;
+
+				const batch = doc.batch();
+				batch.rename( name, element );
+
+				doc.selection.setRanges( ranges, isSelectionBackward );
+			} );
+		}
 	}
 
 	_buildConverters() {
@@ -118,27 +133,26 @@ export default class Markdown extends Feature {
 		const data = this.editor.data;
 		const editing = this.editor.editing;
 
-		schema.allow( { name: '$inline', attributes: [ 'bold-md' ] } );
-		schema.allow( { name: '$inline', attributes: [ 'italic-md' ] } );
+		schema.allow( { name: '$inline', attributes: 'bold-md' } );
+		schema.allow( { name: '$inline', attributes: 'italic-md' } );
 
-		BuildModelConverterFor( data.modelToView, editing.modelToView )
+		BuildModelConverterFor( editing.modelToView )
 			.fromAttribute( 'bold-md' )
 			.toElement( 'strong' );
 
-		BuildViewConverterFor( data.viewToModel )
-			.fromElement( 'strong' )
-			.toAttribute( 'bold-md', true );
+		// BuildViewConverterFor( data.viewToModel )
+		// 	.fromElement( 'strong' )
+		// 	.toAttribute( 'bold-md', true );
 
-		BuildModelConverterFor( data.modelToView, editing.modelToView )
+		BuildModelConverterFor( editing.modelToView )
 			.fromAttribute( 'italic-md' )
 			.toElement( 'em' );
 
-		BuildViewConverterFor( data.viewToModel )
-			.fromElement( 'em' )
-			.toAttribute( 'italic-md', true );
+		// BuildViewConverterFor( data.viewToModel )
+		// 	.fromElement( 'em' )
+		// 	.toAttribute( 'italic-md', true );
 	}
 }
-
 
 // Looks for topmost element from position parent to element placed in root.
 //
