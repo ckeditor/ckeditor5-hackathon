@@ -37,11 +37,6 @@ export default class Autocomplete extends Feature {
 		this._setupUi();
 
 		editor.document.on( 'changesDone', this._check, this );
-
-		// editor.keystrokes.set( 'arrowdown', () => {
-		// 	console.log( 'adown' );
-		// 	return true;
-		// } );
 	}
 
 	/**
