@@ -100,7 +100,7 @@ export default class Autocomplete extends Feature {
 		const textBefore = text.substr( 0, selOffset );
 
 		let lastTrigger = null;
-		let lastTriggerIndex = 0;
+		let lastTriggerIndex = -1;
 
 		this.model.suggestions.clear();
 
@@ -130,7 +130,7 @@ export default class Autocomplete extends Feature {
 			// "xt."
 			text.slice( selOffset ).split( /\s/g )[ 0 ];
 
-		console.log( `[ i] "${ textBefore }", "${ currentText }"` );
+		console.log( `[i] Current "${ currentText }", Before: "${ textBefore }"` );
 
 		if ( currentText.match( /\s/g ) ) {
 			console.log( '[i] Whitespace between trigger and current position.' );
