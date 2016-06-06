@@ -13,6 +13,7 @@ import BuildModelConverterFor from '../engine/conversion/model-converter-builder
 import Range from '../engine/model/range.js';
 
 import InsertOperation from '../engine/model/operation/insertoperation.js';
+import InsertDelta from '../engine/model/delta/insertdelta.js';
 
 const INSERTED = 'inserted';
 const DELETED = 'deleted';
@@ -69,9 +70,12 @@ export default class SuggestionModeEngine extends Feature {
 			}
 
 			const lastOperation = getLastOperation( batch );
+			const lastDelta = lastOperation.delta;
 
-			// May be redundant after we checked the type above.
-			if ( !( lastOperation instanceof InsertOperation ) ) {
+			// Checking the last operation type may be redundant after we checked it above (TODO).
+			// However, checking the delta type let's us know whether it wasn't e.g. a split delta,
+			// which isn't insertion. After all, we don't want to mark second part of split paragraph as inserted.
+			if ( !( lastOperation instanceof InsertOperation ) || !( lastDelta instanceof InsertDelta ) ) {
 				return;
 			}
 
@@ -83,9 +87,16 @@ export default class SuggestionModeEngine extends Feature {
 			}
 
 			doc.enqueueChanges( () => {
+				// We're not checking type of the item (whether it's a text or element) so we'll mark elements
+				// as well. This is actually fine, but we'd need converters to render that. Also, it'd matter whether
+				// e.g. a right or left side of an block was merged with another block, so it's quite a lot of work
+				// which I'm ignoring at this point.
 				for ( let value of data.range ) {
 					const range = new Range( value.previousPosition, value.nextPosition );
+
 					batch.setAttr( INSERTED, true, range );
+					// We need to remove the deleted attribute, because typing uses weakinsert, so
+					// the text automatically inherits current attributes.
 					batch.removeAttr( DELETED, range );
 				}
 			} );
