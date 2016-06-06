@@ -35,6 +35,7 @@ export default class Markdown extends Feature {
 		const editing = editor.editing;
 
 		editor.document.schema.allow( { name: '$inline', attributes: [ 'bold-md' ] } );
+		editor.document.schema.allow( { name: '$inline', attributes: [ 'italic-md' ] } );
 
 		BuildModelConverterFor( data.modelToView, editing.modelToView )
 			.fromAttribute( 'bold-md' )
@@ -44,7 +45,15 @@ export default class Markdown extends Feature {
 			.fromElement( 'strong' )
 			.toAttribute( 'bold-md', true );
 
-		editing.model.on( 'change', ( evt, type, data, batch ) => {
+		BuildModelConverterFor( data.modelToView, editing.modelToView )
+			.fromAttribute( 'italic-md' )
+			.toElement( 'em' );
+
+		BuildViewConverterFor( data.viewToModel )
+			.fromElement( 'em' )
+			.toAttribute( 'italic-md', true );
+
+		editing.model.on( 'change', ( evt, type, data ) => {
 			console.log( 'model changed', type );
 
 			if ( type === 'insert' ) {
@@ -85,24 +94,37 @@ export default class Markdown extends Feature {
 				if ( block.root.rootName !== '$graveyard' ) {
 					const batch = doc.batch();
 					batch.removeAttr( 'bold-md', range );
+					batch.removeAttr( 'italic-md', range );
 				}
 			} );
 		}
 
 		function applyAttributes( block ) {
 			const text = block.getText();
-			const regexp = new RegExp( /\*\*.+?\*\*/g );
+			const regexp = new RegExp( /(\*\*.+?\*\*)|(\*.+?\*)/g );
 
 			let result;
 
 			while ( ( result = regexp.exec( text ) ) !== null ) {
-				const matched = result[ 0 ];
+				let matched;
+				let attr;
+
+				if ( result[ 1 ] ) {
+					matched = result[ 1 ];
+					attr = 'bold-md';
+				}
+
+				if ( result[ 2 ] ) {
+					matched = result[ 2 ];
+					attr = 'italic-md';
+				}
+
 				const index = result.index;
 
 				doc.enqueueChanges( () => {
 					const batch = doc.batch();
 					const range = Range.createFromParentsAndOffsets( block, index, block, index + matched.length );
-					batch.setAttr( 'bold-md', true, range );
+					batch.setAttr( attr, true, range );
 				} );
 			}
 		}
