@@ -29,7 +29,7 @@ export default class Markdown extends Feature {
 	init() {
 		const editor = this.editor;
 		const doc = editor.document;
-		let block = false;
+		let blockEvents = false;
 
 		this._createConverters();
 		this._createTextCommand( 'bold-md', '**', 'Bold', 'bold', 'CTRL+B' );
@@ -40,8 +40,7 @@ export default class Markdown extends Feature {
 
 		// Listen to model changes and add attributes.
 		this.listenTo( doc, 'change', ( evt, type, data ) => {
-			if ( type === 'insert' && !block ) {
-				console.log( 'insert' );
+			if ( type === 'insert' && !blockEvents ) {
 				const insertPosition = data.range.start;
 				const insertBlock = findTopmostBlock( insertPosition );
 
@@ -49,8 +48,7 @@ export default class Markdown extends Feature {
 				applyAttributes( insertBlock );
 				applyHeaders( insertBlock );
 			} else
-			if ( type === 'remove' && !block ) {
-				console.log( 'remove' );
+			if ( type === 'remove' && !blockEvents ) {
 				const removePosition = data.sourcePosition;
 				const removeBlock = findTopmostBlock( removePosition );
 
@@ -61,7 +59,6 @@ export default class Markdown extends Feature {
 				}
 			} else
 			if ( type === 'move' ) {
-				console.log( 'move' );
 				const movePosition = data.sourcePosition;
 				const moveBlock = findTopmostBlock( movePosition );
 
@@ -142,7 +139,7 @@ export default class Markdown extends Feature {
 			}
 
 			// We will not listen on events fired when renaming is happening.
-			block = true;
+			blockEvents = true;
 			doc.enqueueChanges( () => {
 				const ranges = [ ...doc.selection.getRanges() ];
 				const isSelectionBackward = doc.selection.isBackward;
@@ -151,7 +148,7 @@ export default class Markdown extends Feature {
 				batch.rename( name, element );
 
 				doc.selection.setRanges( ranges, isSelectionBackward );
-				block = false;
+				blockEvents = false;
 			} );
 		}
 	}
@@ -235,7 +232,7 @@ export default class Markdown extends Feature {
 // @param {Boolean} [nodeAfter=true] When position is placed inside root element this will determine if element before
 // or after given position will be returned.
 // @returns {engine.model.Element}
-function findTopmostBlock( position, nodeAfter = true ) {
+export function findTopmostBlock( position, nodeAfter = true ) {
 	let parent = position.parent;
 
 	// If position is placed inside root - get element after/before it.
