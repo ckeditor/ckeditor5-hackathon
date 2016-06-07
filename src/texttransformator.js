@@ -12,16 +12,19 @@ import LivePosition from '../engine/model/liveposition.js';
 import Text from '../engine/model/text.js';
 
 /**
- * Text transformations PoC
+ * Text transformations PoC.
  *
  * @extends ckeditor5.Feature
  */
 export default class TextTransformator extends Feature {
+	/**
+	 * @inheritdoc
+	 */
 	constructor( ...args ) {
 		super( ...args );
 
 		/**
-		 * Set of transformation definitions
+		 * Set of transformation definitions.
 		 *
 		 * @type {Map}
 		 */
@@ -30,54 +33,46 @@ export default class TextTransformator extends Feature {
 		this.transformDefinitions.set( ':)', new Text( '\u263A' ) );
 	}
 
-	init() {
-		const editor = this.editor;
-
-		editor.document.on( 'change', this._handleChange.bind( this ) );
-	}
-
 	/**
-	 * Handle document change
-	 *
-	 * @param {Object} event
-	 * @param {String} type
-	 * @param {Object} changes
-	 * @param {Object} batch
-	 * @private
+	 * @inheritdoc
 	 */
-	_handleChange( event, type, changes, batch ) {
-		if ( type != 'insert' ) {
-			return;
-		}
-
-		for ( let value of changes.range.getItems( { singleCharacters: true } ) ) {
-			let matched = this._matchChangeWithPatterns( Position.createAfter( value ), this.transformDefinitions );
-
-			if ( !matched.success ) {
-				continue;
+	init() {
+		this.editor.document.on( 'change', ( event, type, changes, batch ) => {
+			if ( type != 'insert' ) {
+				return;
 			}
 
-			const doc = this.editor.document;
-			let livePos = LivePosition.createFromPosition( matched.position );
+			for ( let value of changes.range.getItems( { singleCharacters: true } ) ) {
+				let matched = this._matchChangeWithPatterns( Position.createAfter( value ), this.transformDefinitions );
 
-			doc.enqueueChanges( () => {
-				if ( livePos.root != doc.graveyard &&
-					this._matchChangeWithPatterns( matched.position, this.transformDefinitions )
-				) {
-					for ( let i = 0; i < matched.transformation[ 0 ].length; i++ ) {
-						batch.remove( livePos.nodeBefore );
-					}
-
-					batch.insert( livePos, matched.transformation[ 1 ] );
+				if ( !matched.success ) {
+					continue;
 				}
-			} );
-		}
+
+				const doc = this.editor.document;
+				let livePos = LivePosition.createFromPosition( matched.position );
+
+				doc.enqueueChanges( () => {
+					if ( livePos.root != doc.graveyard &&
+						this._matchChangeWithPatterns( matched.position, this.transformDefinitions )
+					) {
+						for ( let i = 0; i < matched.transformation[ 0 ].length; i++ ) {
+							batch.remove( livePos.nodeBefore );
+						}
+
+						batch.insert( livePos, matched.transformation[ 1 ] );
+					}
+				} );
+			}
+		} );
 	}
 
 	/**
+	 * Iterate through the change range and match with transformation definitions.
+	 *
 	 * @param {Object} position
 	 * @param {Map} transformDefinitions
-	 * @returns {Object}
+	 * @returns {Object} matched definition data
 	 * @private
 	 */
 	_matchChangeWithPatterns( position, transformDefinitions ) {
