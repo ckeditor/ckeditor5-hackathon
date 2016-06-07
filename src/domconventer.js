@@ -40,7 +40,7 @@ function parseElement( element ) {
 		.filter( node => node instanceof Text );
 
 	for ( let child of childNodes ) {
-		// todo: is element a block?
+		// todo: is element (child) a block?
 
 		for ( let nodeMap of parseText( child ) ) {
 			values.push( nodeMap );
