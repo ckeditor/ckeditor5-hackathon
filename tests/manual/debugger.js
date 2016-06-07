@@ -9,22 +9,29 @@
 
 import ClassicEditor from '/ckeditor5/creator-classic/classic.js';
 
-ClassicEditor.create( document.querySelector( '#editor' ), {
-	features: [
-		'delete',
-		'enter',
-		'typing',
-		'paragraph',
-		'undo',
-		'basic-styles/bold',
-		'basic-styles/italic',
-		'hackathon/debugger'
-	],
-	toolbar: [ 'bold', 'italic', 'undo', 'redo' ]
-} )
-.then( editor => {
-	window.editor = editor;
-} )
-.catch( err => {
-	console.error( err.stack );
-} );
+ClassicEditor.create(
+	document.querySelector( '#editor' ), {
+		features: [
+			'delete',
+			'enter',
+			'typing',
+			'paragraph',
+			'undo',
+			'basic-styles/bold',
+			'basic-styles/italic',
+			'hackathon/debugger'
+		],
+		toolbar: [
+			'bold',
+			'italic',
+			'undo',
+			'redo',
+			'debugger'
+		]
+	} )
+	.then( editor => {
+		window.editor = editor;
+	} )
+	.catch( err => {
+		console.error( err.stack );
+	} );

@@ -5,10 +5,7 @@
 
 'use strict';
 
-/**
- * @memberOf debugger
- */
-export default class DOMConventer {
+export default class DOMConverter {
 	/**
 	 * @param {HTMLDocument} document
 	 * @result {Array}

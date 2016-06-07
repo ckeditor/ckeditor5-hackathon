@@ -5,9 +5,88 @@
 
 'use strict';
 
-import Feature from '../feature.js';
-import DOMConventer from './domconventer';
 import { stringify } from '/tests/engine/_utils/model.js';
+import Feature from '../feature.js';
+import ButtonController from '../ui/button/button.js';
+import ButtonView from '../ui/button/buttonview.js';
+import Model from '../ui/model.js';
+import DebuggerCommand from './debuggercommand';
+import DOMConverter from './domconverter';
+
+export default class Debugger extends Feature {
+	/**
+	 * @inheritDoc
+	 */
+	init() {
+		// todo: find better way to create element
+		this.debugElement = makeElement( 'div', 'ck-editor__code' );
+		this.domParser = new DOMParser();
+		this.domConventer = new DOMConverter();
+
+		const editor = this.editor;
+		const doc = editor.document;
+		const t = editor.t;
+
+		const command = new DebuggerCommand( editor );
+
+		editor.commands.set( 'debugger', command );
+
+		this.debugElement.style.display = 'none';
+		editor.ui.view.element.appendChild( this.debugElement );
+
+		// Create button model.
+		const buttonModel = new Model( {
+			isEnabled: true,
+			isOn: false,
+			label: t( 'Debugger' ),
+			iconAlign: 'LEFT'
+		} );
+
+		// Add debugger button to feature components.
+		editor.ui.featureComponents.add( 'debugger', ButtonController, ButtonView, buttonModel );
+
+		// Bind button model to command.
+		buttonModel.bind( 'isOn', 'isEnabled' ).to( command, 'value', 'isEnabled' );
+
+		// Execute command.
+		this.listenTo( buttonModel, 'execute', () => {
+			editor.execute( 'debugger' );
+
+			if ( command.value ) {
+				this.drawTree();
+				this.debugElement.style.display = 'block';
+			} else {
+				this.debugElement.style.display = 'none';
+			}
+		} );
+
+		// Draw tree.
+		this.listenTo( doc, 'change', () => {
+			if ( !command.value ) {
+				return;
+			}
+
+			this.drawTree();
+		} );
+	}
+
+	/**
+	 * Prints the tree based on data model.
+	 *
+	 * @return {void}
+	 */
+	drawTree() {
+		const modelAsString = stringify( this.editor.document.getRoot() );
+		const parsedDoc = this.domParser.parseFromString( modelAsString, 'text/html' );
+		const convertedDoc = this.domConventer.toArray( parsedDoc );
+
+		while ( this.debugElement.firstChild ) {
+			this.debugElement.removeChild( this.debugElement.firstChild );
+		}
+
+		this.debugElement.appendChild( makeList( convertedDoc ) );
+	}
+}
 
 /**
  * @param {String} elementName
@@ -25,6 +104,7 @@ function makeElement( elementName, ...classList ) {
  * @param {Map[]} mapTree
  * @param {HTMLElement|null} rootElement
  * @returns {HTMLElement}
+ * @todo refactor!
  */
 function makeList( mapTree, rootElement = null ) {
 	if ( !rootElement ) {
@@ -32,27 +112,18 @@ function makeList( mapTree, rootElement = null ) {
 	}
 
 	for ( let item of mapTree.values() ) {
-		const elementName = item.get( 'name' );
-		let openElementList = makeElement( 'li' );
-		let closeElementList = makeElement( 'li', 'js-ignore-folding' );
-
-		openElementList.addEventListener( 'click', ( e ) => {
-			if ( e.srcElement.classList.contains( 'js-ignore-folding' ) ) {
-				return;
-			}
-
-			e.stopPropagation();
-			e.currentTarget.classList.toggle( 'ck-editor__code-element--is-close' );
-		} );
-
+		let openElementList = makeElement( 'li', 'ck-editor--clickable' );
+		let closeElementList = makeElement( 'li', 'ck-editor--non-clickable', 'js-ignore-folding' );
+		let helperElementList = makeElement( 'li', 'ck-editor__list-helper' );
 		const tagValueOpenElement = makeElement( 'span', 'ck-editor__code-element' );
-		tagValueOpenElement.appendChild( new Text( elementName ) );
+		const elementName = item.get( 'name' );
 
+		tagValueOpenElement.appendChild( new Text( elementName ) );
 		openElementList.appendChild( new Text( '<' ) );
 		openElementList.appendChild( tagValueOpenElement );
 		openElementList.appendChild( new Text( '>' ) );
 
-		const tagValueCloseElement = makeElement( 'span', 'ck-editor__code-element' );
+		const tagValueCloseElement = makeElement( 'span', 'ck-editor__code-element', 'ck-editor--non-clickable', 'js-ignore-folding' );
 		tagValueCloseElement.appendChild( new Text( elementName ) );
 
 		closeElementList.appendChild( new Text( '</' ) );
@@ -63,6 +134,7 @@ function makeList( mapTree, rootElement = null ) {
 			rootElement.appendChild( openElementList );
 			rootElement.appendChild( makeList( item.get( 'values' ), openElementList ) );
 			rootElement.appendChild( closeElementList );
+			rootElement.appendChild( helperElementList );
 		} else {
 			let rootElementList = rootElement.querySelector( 'ul' );
 
@@ -71,8 +143,8 @@ function makeList( mapTree, rootElement = null ) {
 				rootElement.appendChild( rootElementList );
 			}
 
-			let textList = makeElement( 'ul', 'js-ignore-folding' );
-			let textElementList = makeElement( 'li', 'js-ignore-folding', 'ck-editor__code-text' );
+			let textList = makeElement( 'ul', 'ck-editor--non-clickable', 'js-ignore-folding' );
+			let textElementList = makeElement( 'li', 'ck-editor--non-clickable', 'js-ignore-folding', 'ck-editor__code-text' );
 
 			for ( let [attrName, attrValue] of item.get( 'attributes' ).entries() ) {
 				openElementList.insertBefore( new Text( ' ' ), openElementList.lastChild );
@@ -92,47 +164,22 @@ function makeList( mapTree, rootElement = null ) {
 			rootElementList.appendChild( openElementList );
 			openElementList.appendChild( textList );
 			rootElementList.appendChild( closeElementList );
+			rootElementList.appendChild( helperElementList );
 
 			// todo: is `values` a block element?
 			textElementList.appendChild( new Text( item.get( 'values' ) ) );
 			textList.appendChild( textElementList );
 		}
+
+		openElementList.addEventListener( 'click', ( e ) => {
+			if ( e.srcElement.classList.contains( 'js-ignore-folding' ) ) {
+				return;
+			}
+
+			e.stopPropagation();
+			e.currentTarget.classList.toggle( 'ck-editor__code-element--is-close' );
+		} );
 	}
 
 	return rootElement;
-}
-
-/**
- * @memberOf debugger
- * @extends ckeditor5.Feature
- */
-export default class Debugger extends Feature {
-	/**
-	 * @inheritDoc
-	 */
-	init() {
-		const editor = this.editor;
-		const domParser = new DOMParser();
-		const domConventer = new DOMConventer();
-
-		// todo: find better way to create element
-		const debugElement = window.document.createElement( 'div' );
-		editor.ui.view.element.appendChild( debugElement );
-
-		debugElement.classList.add( 'ck-editor__code' );
-
-		editor.document.on( 'change', () => {
-			editor.document.enqueueChanges( () => {
-				const modelAsString = stringify( editor.document.getRoot() );
-				const parsedDoc = domParser.parseFromString( modelAsString, 'text/html' );
-				const convertedDoc = domConventer.toArray( parsedDoc );
-
-				while ( debugElement.firstChild ) {
-					debugElement.removeChild( debugElement.firstChild );
-				}
-
-				debugElement.appendChild( makeList( convertedDoc ) );
-			} );
-		} );
-	}
 }
