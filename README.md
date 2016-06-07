@@ -13,7 +13,7 @@ More information about the CKEditor 5 can be found at the following url: <https:
 
 * Feature name: `selective-undo`
 * Issue: https://github.com/ckeditor/ckeditor5-hackathon/issues/3
-* Code: https://github.com/ckeditor/ckeditor5-hackathon/tree/selective-undo
+* Code: https://github.com/ckeditor/ckeditor5-hackathon/compare/selective-undo
 
 <img src="https://raw.githubusercontent.com/ckeditor/ckeditor5-hackathon/master/media/selective-undo.gif" alt="Screencast of the selective undo feature for CKEditor 5">
 
@@ -55,7 +55,7 @@ More information about the CKEditor 5 can be found at the following url: <https:
 
 * Feature name: `autocomplete`
 * Issue: https://github.com/ckeditor/ckeditor5-hackathon/issues/6
-* Code: https://github.com/ckeditor/ckeditor5-hackathon/tree/autocomplete
+* Code: https://github.com/ckeditor/ckeditor5-hackathon/compare/autocomplete
 
 <img src="https://raw.githubusercontent.com/ckeditor/ckeditor5-hackathon/master/media/autocomplete.gif" alt="Screencast of the autocompletion feature for CKEditor 5">
 
