@@ -6,16 +6,14 @@
 'use strict';
 
 import Feature from '../feature.js';
-import ViewText from '../engine/view/text.js';
-import MutationObserver from '../engine/view/observer/mutationobserver.js';
 import Range from '../engine/model/range.js';
 import RootElement from '../engine/model/rootelement.js';
-import ViewRange from '../engine/view/range.js';
-import ViewAttributeElement from '../engine/view/attributeelement.js';
-import ViewContainerElement from '../engine/view/containerelement.js';
-import ViewMatcher from '../engine/view/matcher.js';
-import BuildViewConverterFor from '../engine/conversion/view-converter-builder.js';
 import BuildModelConverterFor from '../engine/conversion/model-converter-builder.js';
+import Model from '../ui/model.js';
+import ButtonController from '../ui/button/button.js';
+import ButtonView from '../ui/button/buttonview.js';
+import MarkdownTextCommand from './markdowntextcommand.js';
+import MarkdownBlockCommand from './markdownblockcommand.js';
 
 /**
  * A paragraph feature for editor.
@@ -31,33 +29,39 @@ export default class Markdown extends Feature {
 	init() {
 		const editor = this.editor;
 		const doc = editor.document;
-		const editing = editor.editing;
+		let block = false;
 
-		this._buildConverters();
+		this._createConverters();
+		this._createTextCommand( 'bold-md', '**', 'Bold', 'bold', 'CTRL+B' );
+		this._createTextCommand( 'italic-md', '*', 'Italic', 'italic', 'CTRL+I' );
+		this._createBlockCommand( 'heading1-md', 'heading1', 'H1' );
+		this._createBlockCommand( 'heading2-md', 'heading2', 'H2' );
+		this._createBlockCommand( 'heading3-md', 'heading3', 'H3' );
 
 		// Listen to model changes and add attributes.
-		editing.model.on( 'change', ( evt, type, data ) => {
-			console.log( 'model changed', type, data );
-
-			if ( type === 'insert' ) {
+		this.listenTo( doc, 'change', ( evt, type, data ) => {
+			if ( type === 'insert' && !block ) {
+				console.log( 'insert' );
 				const insertPosition = data.range.start;
 				const insertBlock = findTopmostBlock( insertPosition );
 
 				removeAttributes( insertBlock );
 				applyAttributes( insertBlock );
-
-				const text = insertBlock.getText();
+				applyHeaders( insertBlock );
 			} else
-			if ( type === 'remove' ) {
+			if ( type === 'remove' && !block ) {
+				console.log( 'remove' );
 				const removePosition = data.sourcePosition;
 				const removeBlock = findTopmostBlock( removePosition );
 
 				if ( removeBlock !== null ) {
 					removeAttributes( removeBlock );
 					applyAttributes( removeBlock );
+					applyHeaders( removeBlock );
 				}
 			} else
 			if ( type === 'move' ) {
+				console.log( 'move' );
 				const movePosition = data.sourcePosition;
 				const moveBlock = findTopmostBlock( movePosition );
 
@@ -115,22 +119,45 @@ export default class Markdown extends Feature {
 			}
 		}
 
+		function applyHeaders( block ) {
+			const text = block.getText();
+
+			if ( /^#\s/.test( text ) ) {
+				rename( 'heading1', block );
+			} else
+			if ( /^##\s/.test( text ) ) {
+				rename( 'heading2', block );
+			} else
+			if ( /^###\s/.test( text ) ) {
+				rename( 'heading3', block );
+			}
+			else {
+				rename( 'paragraph', block );
+			}
+		}
+
 		function rename( name, element ) {
+			if ( element.name === name ) {
+				return;
+			}
+
+			// We will not listen on events fired when renaming is happening.
+			block = true;
 			doc.enqueueChanges( () => {
 				const ranges = [ ...doc.selection.getRanges() ];
 				const isSelectionBackward = doc.selection.isBackward;
-
 				const batch = doc.batch();
+
 				batch.rename( name, element );
 
 				doc.selection.setRanges( ranges, isSelectionBackward );
+				block = false;
 			} );
 		}
 	}
 
-	_buildConverters() {
+	_createConverters() {
 		const schema = this.editor.document.schema;
-		const data = this.editor.data;
 		const editing = this.editor.editing;
 
 		schema.allow( { name: '$inline', attributes: 'bold-md' } );
@@ -140,17 +167,61 @@ export default class Markdown extends Feature {
 			.fromAttribute( 'bold-md' )
 			.toElement( 'strong' );
 
-		// BuildViewConverterFor( data.viewToModel )
-		// 	.fromElement( 'strong' )
-		// 	.toAttribute( 'bold-md', true );
-
 		BuildModelConverterFor( editing.modelToView )
 			.fromAttribute( 'italic-md' )
 			.toElement( 'em' );
+	}
 
-		// BuildViewConverterFor( data.viewToModel )
-		// 	.fromElement( 'em' )
-		// 	.toAttribute( 'italic-md', true );
+	_createTextCommand( name, delimiter, label, icon, keystroke ) {
+		const editor = this.editor;
+
+		const command = new MarkdownTextCommand( editor, name, delimiter );
+		editor.commands.set( name, command );
+
+		// Create button model.
+		const buttonModel = new Model( {
+			isEnabled: true,
+			isOn: false,
+			label: label,
+			icon: icon,
+			iconAlign: 'LEFT'
+		} );
+
+		// Bind model to command.
+		buttonModel.bind( 'isEnabled', 'isOn' ).to( command, 'isEnabled', 'value' );
+
+		// Add bold button to feature components.
+		editor.ui.featureComponents.add( name, ButtonController, ButtonView, buttonModel );
+
+		// Execute command.
+		this.listenTo( buttonModel, 'execute', () => editor.execute( name ) );
+
+		// Keystroke.
+		editor.keystrokes.set( keystroke, name );
+	}
+
+	_createBlockCommand( commandName, blockName, label ) {
+		const editor = this.editor;
+
+		const command = new MarkdownBlockCommand( editor, blockName );
+		editor.commands.set( commandName, command );
+
+		// Create button model.
+		const buttonModel = new Model( {
+			isEnabled: true,
+			isOn: false,
+			label: label,
+			iconAlign: 'LEFT'
+		} );
+
+		// Bind model to command.
+		buttonModel.bind( 'isEnabled', 'isOn' ).to( command, 'isEnabled', 'value' );
+
+		// Add bold button to feature components.
+		editor.ui.featureComponents.add( commandName, ButtonController, ButtonView, buttonModel );
+
+		// Execute command.
+		this.listenTo( buttonModel, 'execute', () => editor.execute( commandName ) );
 	}
 }
 

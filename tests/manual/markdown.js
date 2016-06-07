@@ -10,8 +10,8 @@
 import ClassicEditor from '/ckeditor5/creator-classic/classic.js';
 
 ClassicEditor.create( document.querySelector( '#editor' ), {
-	features: [ 'delete', 'enter', 'typing', 'paragraph', 'formats', 'undo', 'hackathon/markdown' ],
-	toolbar: [ 'undo', 'redo' ]
+	features: [ 'delete', 'enter', 'typing', 'paragraph', 'formats/formatsengine', 'undo', 'hackathon/markdown' ],
+	toolbar: [ 'heading1-md', 'heading2-md', 'heading3-md', 'bold-md', 'italic-md' ]
 } )
 	.then( editor => {
 		window.editor = editor;
