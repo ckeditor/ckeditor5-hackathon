@@ -34,9 +34,9 @@ export default class Markdown extends Feature {
 		this._createConverters();
 		this._createTextCommand( 'bold-md', '**', 'Bold', 'bold', 'CTRL+B' );
 		this._createTextCommand( 'italic-md', '*', 'Italic', 'italic', 'CTRL+I' );
-		this._createBlockCommand( 'heading1-md', 'heading1', 'H1' );
-		this._createBlockCommand( 'heading2-md', 'heading2', 'H2' );
-		this._createBlockCommand( 'heading3-md', 'heading3', 'H3' );
+		this._createBlockCommand( 'heading1-md', 'heading1', 'H1', '# ' );
+		this._createBlockCommand( 'heading2-md', 'heading2', 'H2', '## ' );
+		this._createBlockCommand( 'heading3-md', 'heading3', 'H3', '### ' );
 
 		// Listen to model changes and add attributes.
 		this.listenTo( doc, 'change', ( evt, type, data ) => {
@@ -200,10 +200,10 @@ export default class Markdown extends Feature {
 		editor.keystrokes.set( keystroke, name );
 	}
 
-	_createBlockCommand( commandName, blockName, label ) {
+	_createBlockCommand( commandName, blockName, label, delimiter ) {
 		const editor = this.editor;
 
-		const command = new MarkdownBlockCommand( editor, blockName );
+		const command = new MarkdownBlockCommand( editor, blockName, delimiter );
 		editor.commands.set( commandName, command );
 
 		// Create button model.
