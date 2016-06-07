@@ -7,10 +7,6 @@
 
 import { stringify } from '/tests/engine/_utils/model.js';
 import Feature from '../feature.js';
-import ButtonController from '../ui/button/button.js';
-import ButtonView from '../ui/button/buttonview.js';
-import Model from '../ui/model.js';
-import DebuggerCommand from './debuggercommand';
 import DOMConverter from './domconverter';
 
 export default class Debugger extends Feature {
@@ -18,54 +14,16 @@ export default class Debugger extends Feature {
 	 * @inheritDoc
 	 */
 	init() {
-		// todo: find better way to create element
-		this.debugElement = makeElement( 'div', 'ck-editor__code' );
+		this.debugElement = window.document.createElement( 'div' );
+		this.debugElement.classList.add( 'ck-editor__code' );
+
+		window.document.body.appendChild( this.debugElement );
+
 		this.domParser = new DOMParser();
 		this.domConventer = new DOMConverter();
 
-		const editor = this.editor;
-		const doc = editor.document;
-		const t = editor.t;
-
-		const command = new DebuggerCommand( editor );
-
-		editor.commands.set( 'debugger', command );
-
-		this.debugElement.style.display = 'none';
-		editor.ui.view.element.appendChild( this.debugElement );
-
-		// Create button model.
-		const buttonModel = new Model( {
-			isEnabled: true,
-			isOn: false,
-			label: t( 'Debugger' ),
-			iconAlign: 'LEFT'
-		} );
-
-		// Add debugger button to feature components.
-		editor.ui.featureComponents.add( 'debugger', ButtonController, ButtonView, buttonModel );
-
-		// Bind button model to command.
-		buttonModel.bind( 'isOn', 'isEnabled' ).to( command, 'value', 'isEnabled' );
-
-		// Execute command.
-		this.listenTo( buttonModel, 'execute', () => {
-			editor.execute( 'debugger' );
-
-			if ( command.value ) {
-				this.drawTree();
-				this.debugElement.style.display = 'block';
-			} else {
-				this.debugElement.style.display = 'none';
-			}
-		} );
-
 		// Draw tree.
-		this.listenTo( doc, 'change', () => {
-			if ( !command.value ) {
-				return;
-			}
-
+		this.listenTo( this.editor.document, 'change', () => {
 			this.drawTree();
 		} );
 	}
@@ -76,7 +34,8 @@ export default class Debugger extends Feature {
 	 * @return {void}
 	 */
 	drawTree() {
-		const modelAsString = stringify( this.editor.document.getRoot() );
+		const editor = this.editor;
+		const modelAsString = stringify( editor.document.getRoot() );
 		const parsedDoc = this.domParser.parseFromString( modelAsString, 'text/html' );
 		const convertedDoc = this.domConventer.toArray( parsedDoc );
 

@@ -25,8 +25,7 @@ ClassicEditor.create(
 			'bold',
 			'italic',
 			'undo',
-			'redo',
-			'debugger'
+			'redo'
 		]
 	} )
 	.then( editor => {
