@@ -20,10 +20,15 @@ import WeakInsertDelta from '../engine/model/delta/weakinsertdelta.js';
 import WrapDelta from '../engine/model/delta/wrapdelta.js';
 
 import InsertOperation from '../engine/model/operation/insertoperation.js';
+import RemoveOperation from '../engine/model/operation/removeoperation.js';
 import MoveOperation from '../engine/model/operation/moveoperation.js';
-import AttributeOperation from '../engine/model/operation/moveoperation.js';
+import AttributeOperation from '../engine/model/operation/attributeoperation.js';
 
 import ModelRange from '../engine/model/range.js';
+
+import ViewRange from '../engine/view/range.js';
+import ViewAttributeElement from '../engine/view/attributeelement.js';
+import ViewContainerElement from '../engine/view/containerelement.js';
 
 export default class SelectiveUndo extends Feature {
 	static get requires() {
@@ -35,7 +40,7 @@ export default class SelectiveUndo extends Feature {
 	 */
 	init() {
 		this.previewedItem = null;
-		this.previewedRanges = [];
+		this.previewElements = [];
 		this.items = [];
 		this.uiHolder = this._initUi();
 
@@ -59,13 +64,13 @@ export default class SelectiveUndo extends Feature {
 
 		this.listenTo( this.editor.document, 'change', ( evt, type, data, batch ) => {
 			if ( this.previewedItem != null ) {
-				this._closePreview( this.previewedItem );
+				this._closePreview();
 			}
 		}, 0 );
 
 		this.listenTo( this.editor.document, 'change', ( evt, type, data, batch ) => {
 			if ( this.previewedItem != null ) {
-				this.previewItem( this.previewedItem );
+				this._previewItem( this.previewedItem );
 			}
 		}, 9999 );
 
@@ -104,7 +109,7 @@ export default class SelectiveUndo extends Feature {
 		} );
 
 		item.ui.addEventListener( 'mouseleave', () => {
-			this._closePreview( item );
+			this._closePreview();
 			this.previewedItem = null;
 		} );
 
@@ -126,6 +131,8 @@ export default class SelectiveUndo extends Feature {
 	}
 
 	_revertItem( item ) {
+		this._closePreview();
+		this.previewedItem = null;
 		this.editor.execute( 'undo', item.batch );
 	}
 
@@ -134,19 +141,110 @@ export default class SelectiveUndo extends Feature {
 
 		for ( let delta of item.batch.deltas ) {
 			for ( let operation of delta.operations ) {
-				if ( operation instanceof InsertOperation ) {
-					ranges.push( ModelRange.createFromPositionAndShift( operation.position, operation.nodeList.length ) );
-				} else if ( operation instanceof MoveOperation ) {
-					ranges.push( ModelRange.createFromPositionAndShift( operation.position, 1 ) );
-					ranges.push( ModelRange.createFromPositionAndShift( operation.position, operation.howMany ) );
-				} else if ( operation instanceof AttributeOperation ) {
+				let baseVersion = operation.baseVersion;
+				let deltaVersion = delta.baseVersion;
 
+				if ( delta instanceof InsertDelta && operation instanceof InsertOperation ) {
+					ranges.push( {
+						baseVersion,
+						deltaVersion,
+						range: ModelRange.createFromPositionAndShift( operation.position, operation.nodeList.length )
+					} );
+				} else if ( delta instanceof RemoveDelta && operation instanceof RemoveOperation ) {
+					ranges.push( {
+						baseVersion,
+						deltaVersion,
+						range: ModelRange.createFromPositionAndShift( operation.sourcePosition, 0 )
+					} );
+				} else if ( delta instanceof SplitDelta && operation instanceof MoveOperation ) {
+					ranges.push( {
+						baseVersion,
+						deltaVersion,
+						range: ModelRange.createFromPositionAndShift( operation.sourcePosition, 0 )
+					} );
+				} else if ( delta instanceof MergeDelta && operation instanceof MoveOperation ) {
+					ranges.push( {
+						baseVersion,
+						deltaVersion,
+						range: ModelRange.createFromPositionAndShift( operation.movedRangeStart, 0 )
+					} );
+				} else if ( delta instanceof MoveDelta && operation instanceof MoveOperation ) {
+					ranges.push( {
+						baseVersion,
+						deltaVersion,
+						range: ModelRange.createFromPositionAndShift( operation.movedRangeStart, operation.howMany )
+					} );
+
+					ranges.push( {
+						baseVersion,
+						deltaVersion,
+						range: ModelRange.createFromPositionAndShift( operation.sourcePosition, 0 )
+					} );
+				} else if ( delta instanceof AttributeDelta && operation instanceof AttributeOperation ) {
+					ranges.push( {
+						baseVersion,
+						deltaVersion,
+						range: ModelRange.createFromRange( operation.range )
+					} );
 				}
 			}
 		}
+
+		let transformedRanges = convertRanges( ranges, this.editor.document.history );
+		const mapper = this.editor.editing.mapper;
+		const writer = this.editor.editing.view.writer;
+
+		for ( let range of transformedRanges ) {
+			if ( range.start.root.rootName == '$graveyard' ) {
+				continue;
+			}
+
+			if ( range.isEmpty ) {
+				let viewPos = mapper.toViewPosition( range.start );
+				let viewElement = new ViewContainerElement( 'span', { 'class': 'selective-undo-pointer' } );
+				writer.insert( viewPos, viewElement );
+
+				this.previewElements.push( {
+					type: 'pointer',
+					position: viewPos,
+					element: viewElement
+				} );
+			} else {
+				let viewRange = mapper.toViewRange( range );
+				let viewElement = new ViewAttributeElement( 'span', { 'class': 'selective-undo-range' } );
+				let newRange = writer.wrap( viewRange, viewElement );
+
+				this.previewElements.push( {
+					type: 'range',
+					range: newRange,
+					element: viewElement
+				} );
+			}
+
+			this.editor.editing.modelToView.convertSelection( this.editor.document.selection );
+			this.editor.editing.view.render();
+		}
 	}
 
-	_closePreview( item ) {
+	_closePreview() {
+		const writer = this.editor.editing.view.writer;
+
+		for ( let item of this.previewElements.reverse() ) {
+			if ( item.type == 'pointer' ) {
+				let index = item.element.getIndex();
+				let viewRange = ViewRange.createFromParentsAndOffsets( item.element.parent, index, item.element.parent, index + 1 );
+				writer.remove( viewRange );
+			} else {
+				let parent = item.range.start.parent;
+				let newRange = ViewRange.createFromParentsAndOffsets( parent, 0, parent, parent.getChildCount() );
+				writer.unwrap( newRange, item.element );
+			}
+
+			this.editor.editing.modelToView.convertSelection( this.editor.document.selection );
+			this.editor.editing.view.render();
+		}
+
+		this.previewElements = [];
 	}
 
 	_getBatchDescription( batch, id ) {
@@ -206,39 +304,24 @@ export default class SelectiveUndo extends Feature {
 	}
 }
 
-// Helper function for `UndoCommand`.
-// Is responsible for restoring given `selectionState` and transform it
-// accordingly to the changes that happened to the document after the
-// `selectionState` got saved.
-function restoreSelection( selectionState, baseVersion, document ) {
-	const history = document.history;
+function convertRanges( ranges, history ) {
+	let transformedRanges = [];
 
-	// Take all selection ranges that were stored with undone batch.
-	const ranges = selectionState.ranges;
+	for ( let item of ranges ) {
+		let range = item.range;
+		let baseVersion = item.baseVersion;
+		let deltaVersion = item.deltaVersion;
+		let transformed = [ range ];
 
-	// This will keep the transformed selection ranges.
-	const transformedRanges = [];
-
-	for ( let originalRange of ranges ) {
-		// We create `transformed` array. At the beginning it will have only the original range.
-		// During transformation the original range will change or even break into smaller ranges.
-		// After the range is broken into two ranges, we have to transform both of those ranges separately.
-		// For that reason, we keep all transformed ranges in one array and operate on it.
-		let transformed = [ originalRange ];
-
-		// The ranges will be transformed by active deltas from history that happened
-		// after the selection got stored. Note, that at this point the document history
-		// already is updated so we will not transform the range by deltas that got undone,
-		// or their reversed version.
-		for ( let historyItem of history.getHistoryItems( baseVersion ) ) {
-			const delta = historyItem.delta;
+		for ( let historyItem of history.getHistoryItems( deltaVersion ) ) {
+			let delta = historyItem.delta;
 
 			for ( let operation of delta.operations ) {
-				// We look through all operations from all deltas.
+				if ( operation.baseVersion <= baseVersion ) {
+					continue;
+				}
 
 				for ( let i = 0; i < transformed.length; i++ ) {
-					// We transform every range by every operation.
-					// We keep current state of transformation in `transformed` array and update it.
 					let result;
 
 					switch ( operation.type ) {
@@ -262,54 +345,30 @@ function restoreSelection( selectionState, baseVersion, document ) {
 							break;
 					}
 
-					// If we have a transformation result, we substitute it in `transformed` array with
-					// the range that got transformed. Keep in mind that the result is an array
-					// and may contain multiple ranges.
 					if ( result ) {
 						transformed.splice( i, 1, ...result );
 
-						// Fix iterator.
 						i = i + result.length - 1;
 					}
 				}
 			}
 		}
 
-		// After `originalRange` got transformed, we have an array of ranges. Some of those
-		// ranges may be "touching" -- they can be next to each other and could be merged.
-		// Let's do this. First, we have to sort those ranges because they don't have to be
-		// in an order.
-		transformed.sort( ( a, b ) => a.start.isBefore( b.start ) ? -1 : 1 );
+		transformedRanges = transformedRanges.concat( transformed );
+	}
 
-		// Then we check if two consecutive ranges are touching. We can do it pair by pair
-		// in one dimensional loop because ranges are sorted.
-		for ( let i = 1 ; i < transformed.length; i++ ) {
-			let a = transformed[ i - 1 ];
-			let b = transformed[ i ];
+	transformedRanges.sort( ( a, b ) => a.start.isBefore( b.start ) ? -1 : 1 );
 
-			if ( a.end.isTouching( b.start ) ) {
-				a.end = b.end;
-				transformed.splice( i, 1 );
-				i--;
-			}
-		}
+	for ( let i = 1 ; i < transformedRanges.length; i++ ) {
+		let a = transformedRanges[ i - 1 ];
+		let b = transformedRanges[ i ];
 
-		// For each `originalRange` from `ranges`, we take only one transformed range.
-		// This is because we want to prevent situation where single-range selection
-		// got transformed to mulit-range selection. We will take the first range that
-		// is not in the graveyard.
-		const transformedRange = transformed.find(
-			( range ) => range.start.root != document.graveyard
-		);
-
-		if ( transformedRange ) {
-			transformedRanges.push( transformedRange );
+		if ( a.end.isTouching( b.start ) ) {
+			a.end = b.end;
+			transformedRanges.splice( i, 1 );
+			i--;
 		}
 	}
 
-	// `transformedRanges` may be empty if all ranges ended up in graveyard.
-	// If that is the case, do not restore selection.
-	if ( transformedRanges.length ) {
-		document.selection.setRanges( transformedRanges, selectionState.isBackward );
-	}
+	return transformedRanges;
 }
