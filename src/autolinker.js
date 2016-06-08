@@ -41,20 +41,19 @@ export default class AutoLinker extends Feature {
 					return;
 				}
 
-				let result = urlRegex.exec( text );
+				let matchedUrl = urlRegex.exec( text );
 
-				if ( !result ) {
+				if ( !matchedUrl ) {
 					return;
 				}
 
-				const url = result[ 0 ];
-
 				const doc = this.editor.document;
-				let lastPath = _getLastPathPart( currentValue.nextPosition.path );
-				let liveStartPosition = LivePosition.createFromParentAndOffset( currentValue.item.commonParent, lastPath + result.index );
+				const url = matchedUrl[ 0 ];
+				const offset = _getLastPathPart( currentValue.nextPosition.path ) + matchedUrl.index;
+				const livePos = LivePosition.createFromParentAndOffset( currentValue.item.commonParent, offset  );
 
 				doc.enqueueChanges( () => {
-					const urlRange = Range.createFromPositionAndShift( liveStartPosition, url.length );
+					const urlRange = Range.createFromPositionAndShift( livePos, url.length );
 					batch.setAttr( 'link', url, urlRange );
 				} );
 			}
