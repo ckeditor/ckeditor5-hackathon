@@ -12,6 +12,7 @@ import ClassicEditor from '/ckeditor5/creator-classic/classic.js';
 ClassicEditor.create(
 	document.querySelector( '#editor' ), {
 		features: [
+			'formats',
 			'delete',
 			'enter',
 			'typing',
@@ -22,6 +23,7 @@ ClassicEditor.create(
 			'hackathon/debugger'
 		],
 		toolbar: [
+			'formats',
 			'bold',
 			'italic',
 			'undo',
