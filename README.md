@@ -77,6 +77,8 @@ More information about the CKEditor 5 can be found at the following url: <https:
 
 ## Installation
 
+**NOTE**: Hackathon took place in June 2016 and since then the CKEditor 5 API might have dramatically changed, because CKEditor 5 is still in development phase. Hence, there's a high chance that the hackathon features will stop working at some point.
+
 In order to run the demo live you need to:
 
 ```
