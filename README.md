@@ -62,7 +62,7 @@ More information about the CKEditor 5 can be found at the following url: <https:
 ### Graphical Representation of the Model
 
 * Feature name: `graphical-model-representation`
-* Issue: https://github.com/ckeditor/ckeditor5-hackathon/issues/5
+* Issue: https://github.com/ckeditor/ckeditor5-hackathon/issues/1
 * Code: https://github.com/ckeditor/ckeditor5-hackathon/compare/graphical-model-representation
 
 <img src="https://raw.githubusercontent.com/ckeditor/ckeditor5-hackathon/master/media/graphical-model-representation.gif" alt="Screencast of the graphical model representation feature for CKEditor 5">
