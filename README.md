@@ -67,7 +67,7 @@ More information about the CKEditor 5 can be found at the following url: <https:
 
 <img src="https://raw.githubusercontent.com/ckeditor/ckeditor5-hackathon/master/media/graphical-model-representation.gif" alt="Screencast of the graphical model representation feature for CKEditor 5">
 
-### Contents Length Limit
+### Content Length Limit
 
 * Feature name: `limit`
 * Issue: https://github.com/ckeditor/ckeditor5-hackathon/issues/5
