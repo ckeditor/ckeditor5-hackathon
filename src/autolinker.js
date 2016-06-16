@@ -50,7 +50,7 @@ export default class AutoLinker extends Feature {
 				const doc = this.editor.document;
 				const url = matchedUrl[ 0 ];
 				const offset = _getLastPathPart( currentValue.nextPosition.path ) + matchedUrl.index;
-				const livePos = LivePosition.createFromParentAndOffset( currentValue.item.commonParent, offset  );
+				const livePos = LivePosition.createFromParentAndOffset( currentValue.item.commonParent, offset );
 
 				doc.enqueueChanges( () => {
 					const urlRange = Range.createFromPositionAndShift( livePos, url.length );
