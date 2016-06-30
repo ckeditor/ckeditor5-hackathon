@@ -77,7 +77,7 @@ More information about the CKEditor 5 can be found at the following url: <https:
 
 ## Installation
 
-**NOTE**: Hackathon took place in June 2016 and since then the CKEditor 5 API might have dramatically changed (at the moment CKEditor 5 is still in a development phase). Hence, instead of really building CKEditor from source, the below steps show how to use a precompiled version of CKEditor which is [uploaded in this repository](https://github.com/ckeditor/ckeditor5-hackathon/tree/master/build).
+**NOTE**: Hackathon took place in June 2016 and since then the CKEditor 5 API might have dramatically changed (at the moment CKEditor 5 is still in a development phase). Hence, instead of really building CKEditor from source, the below steps show how to use a precompiled version of CKEditor which is uploaded in this repository for each feature.
 
 In order to run the demo live you need to:
 
