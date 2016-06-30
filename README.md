@@ -103,7 +103,7 @@ cp -R ckeditor5-hackathon/build ckeditor5
 3. Start the testing environment:
 
 ```
-cd ../ckeditor5/
+cd ckeditor5
 bender server run
 ```
 
