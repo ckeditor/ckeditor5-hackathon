@@ -62,12 +62,12 @@ More information about the CKEditor 5 can be found at the following url: <https:
 ### Graphical Representation of the Model
 
 * Feature name: `graphical-model-representation`
-* Issue: https://github.com/ckeditor/ckeditor5-hackathon/issues/5
+* Issue: https://github.com/ckeditor/ckeditor5-hackathon/issues/1
 * Code: https://github.com/ckeditor/ckeditor5-hackathon/compare/graphical-model-representation
 
 <img src="https://raw.githubusercontent.com/ckeditor/ckeditor5-hackathon/master/media/graphical-model-representation.gif" alt="Screencast of the graphical model representation feature for CKEditor 5">
 
-### Contents Length Limit
+### Content Length Limit
 
 * Feature name: `limit`
 * Issue: https://github.com/ckeditor/ckeditor5-hackathon/issues/5
@@ -77,7 +77,11 @@ More information about the CKEditor 5 can be found at the following url: <https:
 
 ## Installation
 
+**NOTE**: Hackathon took place in June 2016 and since then the CKEditor 5 API might have dramatically changed (at the moment CKEditor 5 is still in a development phase). Hence, instead of really building CKEditor from source, the below steps show how to use a precompiled version of CKEditor which is [uploaded in this repository](https://github.com/ckeditor/ckeditor5-hackathon/tree/master/build).
+
 In order to run the demo live you need to:
+
+1. Setup the project (this will take a while):
 
 ```
 git clone git@github.com:ckeditor/ckeditor5.git
@@ -85,12 +89,25 @@ cd ckeditor5
 git co hackathon/<feature-name>
 npm i
 sudo npm i -g gulp benderjs-cli
-gulp build
-bender server run
-
+gulp init
 ```
 
-and visit http://localhost:1030/build/amd/tests/hackathon/manual/<feature-name>
+2. Copy the build of the editor from the hackathon repository to `ckeditor5/`.
+
+```
+cd ..
+rm -rf ckeditor5/build
+cp -R ckeditor5-hackathon/build ckeditor5
+```
+
+3. Start the testing environment:
+
+```
+cd ../ckeditor5/
+bender server run
+```
+
+and visit `http://localhost:1030/build/amd/tests/hackathon/manual/<feature-name>` using Chrome (the only supported browser at that moment).
 
 ## License
 
