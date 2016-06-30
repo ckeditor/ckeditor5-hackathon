@@ -1,0 +1,126 @@
+<head>
+	<link rel="stylesheet" href="%APPS_DIR%ckeditor/build/amd/theme/ckeditor.css">
+	<style>
+		.wrappable {
+			white-space: initial;
+			line-height: 3em;
+		}
+
+		*[id^="icon"] .ck-icon + .ck-icon,
+		*[id^="button"] .ck-button + .ck-button,
+		*[id^="dropdown"] .ck-dropdown + .ck-dropdown,
+		*[id^="toolbar"] .ck-button + .ck-button {
+			margin-left: 0.3em;
+		}
+
+		.icon-color {
+			color: red;
+		}
+
+		@keyframes icon-color-change {
+			0% {
+				color: white;
+				background: orange;
+			}
+			50% {
+				color: orange;
+				background: white;
+			}
+			100% {
+				color: white;
+				background: orange;
+			}
+		}
+
+		#icon-color-change {
+			border: 0;
+			animation: icon-color-change 3s infinite;
+		}
+
+		.button-responsive > div {
+			font-size: 1.5em;
+			line-height: 2.8em;
+		}
+
+		.button-responsive div .ck-button {
+			font-size: inherit;
+		}
+	</style>
+</head>
+
+<h2>Icon</h2>
+
+	<h3>Icon: In–text</h3>
+
+	<p>Icons <span id="icon-plain-1"></span> and <span id="icon-plain-2"></span> in a plain paragraph.</p>
+	<p class="icon-color">
+		Icons <span id="icon-color-1"></span> follow the <span id="icon-color-2"></span> color of text.
+	</p>
+
+	<h3>Icon: Availability</h3>
+	<p id="icon-availability" class="ck-reset-all"></p>
+
+	<h3>Icon: Availability (colored)</h3>
+	<p id="icon-availability-color" class="ck-reset-all icon-color"></p>
+
+<hr/>
+
+<h2>Button</h2>
+
+	<h3>Button: States</h3>
+	<div id="button-states" class="ck-reset-all"></div>
+
+	<h3>Button: Types</h3>
+	<div id="button-types" class="ck-reset-all"></div>
+
+	<h3>Button: Icon</h3>
+	<div class="ck-reset-all" >
+		<div id="button-icon" class="wrappable"></div>
+
+		<br/>
+
+		<div id="button-icon-custom"></div>
+
+		<br/>
+		<br/>
+
+		<div id="button-icon-states"></div>
+	</div>
+
+	<h3>Button: Responsiveness</h3>
+	<div id="button-responsive-1" class="button-responsive ck-reset-all">
+		<div id="button-responsive-2" class="button-responsive">
+			<div id="button-responsive-3" class="button-responsive"></div>
+		</div>
+	</div>
+
+<hr/>
+
+<h2>Dropdown</h2>
+
+	<h3>ListDropdown</h3>
+	<div id="dropdown"></div>
+
+<hr/>
+
+<h2>Toolbar</h2>
+
+	<h3>Toolbar: Text</h3>
+	<div id="toolbar-text" class="ck-reset-all"></div>
+
+	<h3>Toolbar: Button</h3>
+	<div id="toolbar-button" class="ck-reset-all"></div>
+
+	<h3>Toolbar: Rounded</h3>
+	<div id="toolbar-rounded" class="ck-reset-all ck-rounded-corners"></div>
+
+	<h3>Toolbar: Wrapping content</h3>
+	<div id="toolbar-wrap" class="ck-reset-all"></div>
+
+	<h3>Toolbar: Item separators</h3>
+	<div id="toolbar-separator" class="ck-reset-all"></div>
+
+	<h3>Toolbar: Multi-row</h3>
+	<div id="toolbar-multi-row" class="ck-reset-all"></div>
+
+<div id="body"></div>
